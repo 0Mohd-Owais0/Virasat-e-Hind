@@ -1,211 +1,746 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Platform,
+  AppState,
+  AppStateStatus,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Alert,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
+import MapView, { Marker, Region, UrlTile } from 'react-native-maps';
+import * as Location from 'expo-location';
+const { width, height } = Dimensions.get('window');
+
+// Types
+type MarkerType = 'monuments' | 'food' | 'religious';
 
 type Place = {
   id: number;
   name: string;
   state: string;
+  city: string;
   lat: number;
   lng: number;
   tags: string[];
   desc: string;
+  type: MarkerType;
+  rating?: number;
+  openHours?: string;
+  price?: string;
 };
 
+type CityInfo = {
+  name: string;
+  state: string;
+  population: string;
+  founded: string;
+  famousFor: string[];
+  description: string;
+  climate: string;
+  languages: string[];
+};
+
+type Festival = {
+  id: number;
+  name: string;
+  month: string;
+  description: string;
+  imageUrl: string;
+};
+
+
+
+// Sample data for Lucknow and nearby places
 const places: Place[] = [
-  { id: 1, name: "Taj Mahal", state: "Uttar Pradesh", lat: 27.1751, lng: 78.0421, tags: ["Mughal", "UNESCO"], desc: "17th‑century ivory‑white marble mausoleum on the south bank of the Yamuna river in Agra." },
-  { id: 2, name: "Hampi", state: "Karnataka", lat: 15.3350, lng: 76.4600, tags: ["Vijayanagara", "UNESCO"], desc: "Ruins of the Vijayanagara Empire famed for stone temples and boulder‑strewn landscape." },
-  { id: 3, name: "Konark Sun Temple", state: "Odisha", lat: 19.8876, lng: 86.0945, tags: ["Kalinga", "UNESCO"], desc: "13th‑century Sun temple designed as a colossal chariot with intricately carved wheels." }
+  // Monuments
+  {
+    id: 1,
+    name: 'Bara Imambara',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8693,
+    lng: 80.9115,
+    tags: ['Nawabi', 'Architecture', 'Historical'],
+    desc: 'An imposing monument built by Asaf-ud-Daula in 1784, famous for its central hall and the Bhool Bhulaiya maze.',
+    type: 'monuments',
+    rating: 4.5,
+    openHours: '6:00 AM - 5:00 PM',
+  },
+  {
+    id: 2,
+    name: 'Chota Imambara',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8615,
+    lng: 80.9103,
+    tags: ['Nawabi', 'Tomb', 'Architecture'],
+    desc: 'Also known as Hussainabad Imambara, built by Muhammad Ali Shah in 1838 with beautiful chandeliers.',
+    type: 'monuments',
+    rating: 4.3,
+    openHours: '6:00 AM - 5:00 PM',
+  },
+  {
+    id: 3,
+    name: 'Rumi Darwaza',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8676,
+    lng: 80.9115,
+    tags: ['Gateway', 'Nawabi', 'Architecture'],
+    desc: 'An imposing gateway built in 1784, standing 60 feet tall, exemplifying Awadhi architecture.',
+    type: 'monuments',
+    rating: 4.2,
+    openHours: 'Always open',
+  },
+
+  // Food Places
+  {
+    id: 4,
+    name: 'Tunday Kababi',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8467,
+    lng: 80.9462,
+    tags: ['Kebab', 'Traditional', 'Famous'],
+    desc: 'Legendary kebab shop famous for its galouti kebabs, established in 1905 in Chowk area.',
+    type: 'food',
+    rating: 4.7,
+    openHours: '12:00 PM - 11:00 PM',
+    price: '₹₹',
+  },
+  {
+    id: 5,
+    name: 'Idris Biryani',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8526,
+    lng: 80.9450,
+    tags: ['Biryani', 'Traditional', 'Authentic'],
+    desc: 'Famous for authentic Lucknowi biryani with aromatic spices and tender meat.',
+    type: 'food',
+    rating: 4.6,
+    openHours: '11:00 AM - 11:00 PM',
+    price: '₹₹',
+  },
+  {
+    id: 6,
+    name: 'Ram Asrey Sweets',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8467,
+    lng: 80.9420,
+    tags: ['Sweets', 'Traditional', 'Kulfi'],
+    desc: 'Historic sweet shop known for traditional Indian sweets and famous malai kulfi.',
+    type: 'food',
+    rating: 4.4,
+    openHours: '8:00 AM - 11:00 PM',
+    price: '₹',
+  },
+
+  // Religious Places
+  {
+    id: 7,
+    name: 'Hanuman Setu Mandir',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8206,
+    lng: 80.9479,
+    tags: ['Hindu', 'Temple', 'Hanuman'],
+    desc: 'Ancient Hanuman temple located on the banks of River Gomti, popular among devotees.',
+    type: 'religious',
+    rating: 4.5,
+    openHours: '5:00 AM - 10:00 PM',
+  },
+  {
+    id: 8,
+    name: 'Teele Wali Masjid',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.8584,
+    lng: 80.9216,
+    tags: ['Mosque', 'Islamic', 'Architecture'],
+    desc: 'Beautiful mosque with three golden domes, representing Islamic architectural excellence.',
+    type: 'religious',
+    rating: 4.3,
+    openHours: '5:00 AM - 10:00 PM',
+  },
+  {
+    id: 9,
+    name: 'Chandrika Devi Temple',
+    state: 'Uttar Pradesh',
+    city: 'Lucknow',
+    lat: 26.7850,
+    lng: 80.8500,
+    tags: ['Hindu', 'Temple', 'Goddess'],
+    desc: 'Ancient temple dedicated to Goddess Chandrika, situated in a peaceful location.',
+    type: 'religious',
+    rating: 4.2,
+    openHours: '6:00 AM - 8:00 PM',
+  },
 ];
+
+// City information
+const lucknowInfo: CityInfo = {
+  name: 'Lucknow',
+  state: 'Uttar Pradesh',
+  population: '3.2 million',
+  founded: '1350 AD',
+  famousFor: ['Nawabi Culture', 'Kebabs', 'Chikankari', 'Adab & Tehzeeb'],
+  description: 'The capital city of Uttar Pradesh, known as the City of Nawabs. Famous for its rich cultural heritage, exquisite cuisine, beautiful gardens, and courteous people.',
+  climate: 'Subtropical with hot summers and cool winters',
+  languages: ['Hindi', 'Urdu', 'English'],
+};
+
+const festivals: Festival[] = [
+  {
+    id: 1,
+    name: 'Lucknow Mahotsav',
+    month: 'December',
+    description: 'A vibrant cultural festival showcasing music, dance, handicrafts, and food of Lucknow.',
+    imageUrl: 'https://picsum.photos/seed/lucknowfest1/600/400',
+  },
+  {
+    id: 2,
+    name: 'Teele Wali Music Fair',
+    month: 'March',
+    description: 'Traditional musical performances featuring instruments like tabla, sitar, and harmonium.',
+    imageUrl: 'https://picsum.photos/seed/musicfest1/600/400',
+  },
+];
+
+const RemoteImage = ({ uri, style }: { uri: string; style: any }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  return (
+    <View style={style}>
+      {loading && <ActivityIndicator style={{ position: 'absolute', top: '45%', left: '45%' }} />}
+      <Image
+        source={error ? require('../../assets/images/Lucknow.jpeg') : { uri }}
+        style={style}
+        onLoadEnd={() => setLoading(false)}
+        onError={() => setError(true)}
+      />
+    </View>
+  );
+};
+
 
 export default function Map() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [locationPermission, setLocationPermission] = useState(false);
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  const [visibleMarkers, setVisibleMarkers] = useState<Set<MarkerType>>(
+    new Set(['monuments', 'food', 'religious'])
+  );
 
-  const initialRegion = {
-    latitude: 22.3511148,
-    longitude: 78.6677428,
-    latitudeDelta: 15,
-    longitudeDelta: 15,
-  };
+  // Center map on Lucknow
+  const [region, setRegion] = useState<Region>({
+    latitude: 26.8467, // Lucknow coordinates
+    longitude: 80.9462,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1,
+  });
+
+  // Check location permission and get current location
+
+  // Check location permission
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const { status: reqStatus } =
+          await Location.requestForegroundPermissionsAsync();
+        setLocationPermission(reqStatus === 'granted');
+      } else {
+        setLocationPermission(true);
+      }
+    };
+
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (
+        appState.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        checkPermissions();
+      }
+      setAppState(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange
+    );
+    checkPermissions();
+
+    return () => {
+      subscription.remove();
+    };
+  }, [appState]);
+
 
   const handleMarkerPress = (place: Place) => {
     setSelectedPlace(place);
   };
 
+  const toggleMarkerType = (type: MarkerType) => {
+    const newVisible = new Set(visibleMarkers);
+    if (newVisible.has(type)) {
+      newVisible.delete(type);
+    } else {
+      newVisible.add(type);
+    }
+    setVisibleMarkers(newVisible);
+  };
+
+  const getMarkerColor = (type: MarkerType): string => {
+    switch (type) {
+      case 'monuments': return '#E63946';
+      case 'food': return '#F77F00';
+      case 'religious': return '#6A994E';
+      default: return '#457B9D';
+    }
+  };
+
+  const getMarkerIcon = (type: MarkerType): string => {
+    switch (type) {
+      case 'monuments': return '🏛️';
+      case 'food': return '🍽️';
+      case 'religious': return '🕉️';
+      default: return '📍';
+    }
+  };
+
+  const filteredPlaces = places.filter(place => visibleMarkers.has(place.type));
+
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Interactive Map of Cultural Places</Text>
-        <Text style={styles.subtitle}>Click a marker to see details</Text>
+        <Text style={styles.title}>Cultural Places of Lucknow</Text>
+        <Text style={styles.subtitle}>Explore the City of Nawabs</Text>
       </View>
-      
+
+      {/* Map Container with Overlay Filters */}
       <View style={styles.mapContainer}>
         <MapView
+          // style={styles.map}
+          // region={region}
+          // onRegionChangeComplete={(reg) => setRegion(reg)}
+          // showsUserLocation={locationPermission}
+          // showsMyLocationButton={true}
+          // showsBuildings={true}
+          // showsTraffic={false}
+          // showsIndoors={true}
+          // mapType="standard"
+          // onMapReady={() => console.log('✅ Map ready')}
           style={styles.map}
-          initialRegion={initialRegion}
-          showsUserLocation={true}
+          region={region}
+          onRegionChangeComplete={(reg) => setRegion(reg)}
+          showsUserLocation={locationPermission}
+          onMapReady={() => console.log('✅ Map ready')}
         >
-          {places.map((place) => (
+          <UrlTile
+            urlTemplate="https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}{r}.png"
+            maximumZ={19}
+            flipY={false}
+          />
+          {/* Place Markers */}
+          {filteredPlaces.map((place) => (
             <Marker
               key={place.id}
               coordinate={{ latitude: place.lat, longitude: place.lng }}
               title={place.name}
-              description={place.state}
+              description={place.desc.substring(0, 50) + '...'}
               onPress={() => handleMarkerPress(place)}
-            />
+            >
+              <View style={[styles.customMarker, { backgroundColor: getMarkerColor(place.type) }]}>
+                <Text style={styles.markerText}>{getMarkerIcon(place.type)}</Text>
+              </View>
+            </Marker>
           ))}
         </MapView>
-        
-        <View style={styles.placeCard}>
-          <Text style={styles.cardTitle}>
-            {selectedPlace ? `${selectedPlace.name} — ${selectedPlace.state}` : 'Selected Place'}
-          </Text>
-          {selectedPlace ? (
-            <>
-              <Text style={styles.cardDesc}>{selectedPlace.desc}</Text>
-              <View style={styles.tagsContainer}>
-                {selectedPlace.tags.map((tag, index) => (
-                  <View key={index} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          ) : (
-            <Text style={styles.cardSubtitle}>Click a marker to view details.</Text>
-          )}
+
+        {/* Overlay Filter Controls */}
+        <View style={styles.filterOverlay}>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              visibleMarkers.has('monuments') && styles.activeChip
+            ]}
+            onPress={() => toggleMarkerType('monuments')}
+          >
+            <Text style={[styles.chipIcon, visibleMarkers.has('monuments') && styles.activeChipText]}>🏛️</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              visibleMarkers.has('food') && styles.activeChip
+            ]}
+            onPress={() => toggleMarkerType('food')}
+          >
+            <Text style={[styles.chipIcon, visibleMarkers.has('food') && styles.activeChipText]}>🍽️</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              visibleMarkers.has('religious') && styles.activeChip
+            ]}
+            onPress={() => toggleMarkerType('religious')}
+          >
+            <Text style={[styles.chipIcon, visibleMarkers.has('religious') && styles.activeChipText]}>🕉️</Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+      {/* Information Section - Full Width */}
+      <ScrollView style={styles.infoSection} showsVerticalScrollIndicator={false}>
+        {/* City Information - Always Visible */}
+        <View style={styles.cityInfoSection}>
+          <Text style={styles.cityTitle}> 
+            🕌 {lucknowInfo.name}, {lucknowInfo.state}
+          </Text>
+          <View style={{display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10}}>
+            <Image source={require('../../assets/images/Lucknow.jpeg')} style={{ borderRadius: 10, width: 120, height: 120}} />
+            <View style={{flex: 1, margin: 1}}>
+          <Text style={styles.cityDescription}>{lucknowInfo.description}</Text>
+            </View>
+          </View> 
+          <View style={styles.infoGrid}>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Population</Text>
+              <Text style={styles.infoValue}>{lucknowInfo.population}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Founded</Text>
+              <Text style={styles.infoValue}>{lucknowInfo.founded}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Climate</Text>
+              <Text style={styles.infoValue}>{lucknowInfo.climate}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>Famous For:</Text>
+          <View style={styles.tagsContainer}>
+            {lucknowInfo.famousFor.map((item, index) => (
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>{item}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[styles.sectionTitle, { marginLeft: 20, marginBottom: 30 }]}> Whats Happening in Lucknow</Text>
+        {festivals.map((fest, index) => (
+          <View key={fest.id} style={[styles.festivalCard, { flexDirection: index % 2 === 0 ? 'row' : 'row-reverse' }]}>
+            <RemoteImage uri={fest.imageUrl} style={styles.festivalImage} />
+            <View style={styles.festivalTextContainer}>
+              <Text style={styles.festivalTitle}>{fest.name}</Text>
+              <Text style={styles.festivalMonth}>{fest.month}</Text>
+              <Text style={styles.festivalDesc}>{fest.description}</Text>
+            </View>
+          </View>
+        ))}
+
+          <Text style={styles.sectionTitle}>Languages Spoken:</Text>
+          <Text style={styles.languageText}>{lucknowInfo.languages.join(', ')}</Text>
+        </View>
+
+        {/* Selected Place Information */}
+        {selectedPlace && (
+          <View style={styles.selectedPlaceSection}>
+            <View style={styles.divider} />
+            <Text style={styles.selectedPlaceTitle}>Selected Place</Text>
+
+            <View style={styles.placeHeader}>
+              <Text style={styles.placeName}>
+                {getMarkerIcon(selectedPlace.type)} {selectedPlace.name}
+              </Text>
+              <View style={[styles.typeChip, { backgroundColor: getMarkerColor(selectedPlace.type) + '20' }]}>
+                <Text style={[styles.typeText, { color: getMarkerColor(selectedPlace.type) }]}>
+                  {selectedPlace.type.charAt(0).toUpperCase() + selectedPlace.type.slice(1)}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.locationText}>
+              📍 {selectedPlace.city}, {selectedPlace.state}
+            </Text>
+
+            {selectedPlace.rating && (
+              <Text style={styles.ratingText}>
+                ⭐ {selectedPlace.rating}/5
+              </Text>
+            )}
+
+            <Text style={styles.placeDesc}>{selectedPlace.desc}</Text>
+
+            {selectedPlace.openHours && (
+              <Text style={styles.detailText}>
+                🕐 {selectedPlace.openHours}
+              </Text>
+            )}
+
+            {selectedPlace.price && (
+              <Text style={styles.detailText}>
+                💰 {selectedPlace.price}
+              </Text>
+            )}
+
+            <View style={styles.tagsContainer}>
+              {selectedPlace.tags.map((tag, index) => (
+                <View key={index} style={[styles.tag, styles.placeTag]}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Statistics */}
+        <View style={styles.statsSection}>
+          <View style={styles.divider} />
+          <Text style={styles.statsText}>
+            📊 Showing {filteredPlaces.length} of {places.length} places
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5E6D3',
+    backgroundColor: '#F8F9FA',
   },
   header: {
-    padding: 20,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#6B2D2D',
-    fontFamily: 'System',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#212529',
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#514a44',
+    color: '#6C757D',
+    fontWeight: '500',
   },
   mapContainer: {
-    flex: 1,
-    margin: 20,
-    marginTop: 0,
+    height: height * 0.5,
+    position: 'relative',
   },
   map: {
     flex: 1,
-    borderRadius: 18,
-    marginBottom: 16,
-    overflow: 'hidden',
   },
-  mapPlaceholder: {
+  filterOverlay: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    flexDirection: 'column',
+    gap: 8,
+  },
+  filterChip: {
+    width: 44,
+    height: 44,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  placeholderText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 8,
+  activeChip: {
+    backgroundColor: '#007AFF',
   },
-  placeholderSubtext: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
+  chipIcon: {
+    fontSize: 18,
   },
-  placeCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D9C6A1',
+  activeChipText: {
+    // Keep the emoji the same
+  },
+  customMarker: {
+    width: 36,
+    height: 36,
     borderRadius: 18,
-    padding: 16,
-    ...(Platform.OS === 'ios' || Platform.OS === 'android' ? {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.05,
-      shadowRadius: 22,
-      elevation: 5,
-    } : {
-      // @ts-ignore
-      boxShadow: '0 8px 22px rgba(0,0,0,0.05)',
-    }),
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  cardTitle: {
+  markerText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  infoSection: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  cityInfoSection: {
+    padding: 20,
+  },
+  cityTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#212529',
+    marginBottom: 12,
+  },
+  cityDescription: {
+    fontSize: 16,
+    color: '#495057',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 20,
+    gap: 15,
+  },
+  infoItem: {
+    flex: 1,
+    minWidth: '30%',
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: '#6C757D',
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#212529',
+    fontWeight: '600',
+  },
+  sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2E2E2E',
-    marginBottom: 8,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#8A7C6E',
-  },
-  cardDesc: {
-    fontSize: 14,
-    color: '#2E2E2E',
-    lineHeight: 20,
+    color: '#212529',
     marginBottom: 12,
+    marginTop: 10,
+  },
+  languageText: {
+    fontSize: 16,
+    color: '#495057',
+    marginBottom: 20,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
+    marginBottom: 20,
   },
   tag: {
-    backgroundColor: '#F5E6D3',
-    borderWidth: 1,
-    borderColor: '#D9C6A1',
-    borderRadius: 999,
-    paddingHorizontal: 10,
+    backgroundColor: '#E9ECEF',
+    borderRadius: 16,
+    paddingHorizontal: 12,
     paddingVertical: 6,
+  },
+  placeTag: {
+    backgroundColor: '#DEF7EC',
   },
   tagText: {
     fontSize: 12,
-    color: '#2E2E2E',
-  },
-  placesList: {
-    maxHeight: 80,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  placeItem: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D9C6A1',
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 12,
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  placeItemSelected: {
-    backgroundColor: '#6B2D2D',
-    borderColor: '#6B2D2D',
-  },
-  placeItemName: {
-    fontSize: 14,
+    color: '#495057',
     fontWeight: '600',
-    color: '#2E2E2E',
-    textAlign: 'center',
   },
-  placeItemState: {
+  selectedPlaceSection: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E9ECEF',
+    marginBottom: 20,
+  },
+  selectedPlaceTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#007AFF',
+    marginBottom: 15,
+  },
+  placeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  placeName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#212529',
+    flex: 1,
+    marginRight: 10,
+  },
+  typeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  typeText: {
     fontSize: 12,
-    color: '#8A7C6E',
-    textAlign: 'center',
-    marginTop: 2,
+    fontWeight: '600',
   },
+  locationText: {
+    fontSize: 14,
+    color: '#6C757D',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  ratingText: {
+    fontSize: 14,
+    color: '#FFC107',
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  placeDesc: {
+    fontSize: 15,
+    color: '#495057',
+    lineHeight: 22,
+    marginBottom: 15,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#6C757D',
+    marginBottom: 5,
+  },
+  statsSection: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  statsText: {
+    fontSize: 14,
+    color: '#6C757D',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+    festivalCard: { marginHorizontal: 0, marginBottom: 30, backgroundColor: '#FFF', borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
+  festivalImage: { width: 150, height: 150, borderRadius: 12 },
+  festivalTextContainer: { flex: 1, padding: 12, justifyContent: 'center' },
+  festivalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  festivalMonth: { fontSize: 14, color: '#6C757D', marginBottom: 6 },
+  festivalDesc: { fontSize: 14, color: '#495057', lineHeight: 20 },
 });

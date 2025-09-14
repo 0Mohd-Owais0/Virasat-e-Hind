@@ -1,23 +1,25 @@
-// index.js
-const express = require("express");
+const express = require('express');
+const vision = require('@google-cloud/vision');
+const cors = require('cors');
+require('dotenv').config();
+const CameraRoutes = require('./Routes/CameraRoutes');
+
 const app = express();
-const PORT = 5000; // you can use any port
+const port = process.env.PORT || 5000;
 
-// Middleware to parse JSON
-app.use(express.json());
+// Initialize Vision API client with better error handling
 
-// Example route
-app.get("/", (req, res) => {
-  res.send("Hello, Backend is running 🚀");
-});
 
-// Example POST route
-app.post("/data", (req, res) => {
-  const body = req.body;
-  res.json({ message: "Data received", data: body });
-});
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+
+app.use('/camera', CameraRoutes);
+
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });

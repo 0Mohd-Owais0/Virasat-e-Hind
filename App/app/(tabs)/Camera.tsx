@@ -1,500 +1,8 @@
-// import React, { useState, useRef, useEffect } from 'react';
-// import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, Button, ScrollView } from 'react-native';
-// import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-// import { AntDesign } from '@expo/vector-icons';
-
-// type Place = {
-//   id: number;
-//   name: string;
-//   state: string;
-// };
-
-// type Result = {
-//   name: string;
-//   note: string;
-//     confidence?: number;
-// } | null;
-
-// const places: Place[] = [
-//   { id: 1, name: "Taj Mahal", state: "Uttar Pradesh" },
-//   { id: 2, name: "Hampi", state: "Karnataka" },
-//   { id: 3, name: "Konark Sun Temple", state: "Odisha" }
-// ];
-
-// const VISION_API_KEY = 'AIzaSyBDfzP2i_XAj6lwc0Nn2BPxSSstyvBqfGw';
-
-// export default function CameraTab() {
-//   const [permission, requestPermission] = useCameraPermissions();
-//   const [isActive, setIsActive] = useState(false);
-//   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-//   const [result, setResult] = useState<Result>(null);
-//   const cameraRef = useRef<CameraView | null>(null);
-//   const [isProcessing, setIsProcessing] = useState(false);
-//   const [facing, setFacing] = useState<CameraType>('back');
-
-// // Attempt to actually make the API calling nd photo recognition work
-
-//   const identifyWithVisionAPI = async (imageUri: string) => {
-//     try {
-//       setIsProcessing(true);
-      
-//       // Convert image to base64
-//       const response = await fetch(imageUri);
-//       const blob = await response.blob();
-//       const base64 = await new Promise((resolve) => {
-//         const reader = new FileReader();
-//         reader.onloadend = () => {
-//           const base64String = reader.result as string;
-//           // Remove data:image/jpeg;base64, prefix
-//           resolve(base64String.split(',')[1]);
-//         };
-//         reader.readAsDataURL(blob);
-//       });
-
-//       // Call Google Cloud Vision API
-//       const visionResponse = await fetch(
-//         `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//           },
-//           body: JSON.stringify({
-//             requests: [
-//               {
-//                 image: {
-//                   content: base64,
-//                 },
-//                 features: [
-//                   {
-//                     type: 'LANDMARK_DETECTION',
-//                     maxResults: 5,
-//                   },
-//                   {
-//                     type: 'WEB_DETECTION',
-//                     maxResults: 5,
-//                   }
-//                 ],
-//               },
-//             ],
-//           }),
-//         }
-//       );
-
-//       const visionData = await visionResponse.json();
-//       console.log('Vision API Response:', visionData);
-
-//       if (visionData.responses && visionData.responses[0]) {
-//         const response = visionData.responses[0];
-        
-//         // Check for landmark detection first
-//         if (response.landmarkAnnotations && response.landmarkAnnotations.length > 0) {
-//           const landmark = response.landmarkAnnotations[0];
-//           return {
-//             name: landmark.description,
-//             note: `Detected landmark with ${Math.round(landmark.score * 100)}% confidence`,
-//             confidence: landmark.score
-//           };
-//         }
-        
-//         // Check web detection for similar images
-//         if (response.webDetection && response.webDetection.webEntities) {
-//           const webEntities = response.webDetection.webEntities;
-//           const relevantEntity = webEntities.find((entity: any) =>
-//             entity.description && entity.score > 0.5
-//           );
-          
-//           if (relevantEntity) {
-//             return {
-//               name: relevantEntity.description,
-//               note: `Found similar images online with ${Math.round(relevantEntity.score * 100)}% confidence`,
-//               confidence: relevantEntity.score
-//             };
-//           }
-//         }
-        
-//         // If no landmarks found, return a message
-//         return {
-//           name: "Unknown Location",
-//           note: "Could not identify this as a known monument or landmark",
-//           confidence: 0
-//         };
-//       }
-      
-//       throw new Error('No response from Vision API');
-//     } catch (error) {
-//       console.error('Vision API Error:', error);
-//       Alert.alert('API Error', 'Failed to analyze image. Using mock data instead.');
-//       return mockIdentify(); // Fallback to mock data
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-
-
-
-
-//   const mockIdentify = () => {
-//     const randomPlace = places[Math.floor(Math.random() * places.length)];
-//     return {
-//       name: randomPlace.name,
-//       note: `Located in ${randomPlace.state}`,
-//     };
-//   };
-
-//   const startCamera = () => {
-//     if (permission) {
-//       setIsActive(true);
-//       setCapturedImage(null);
-//       setResult(null);
-//     } else {
-//       Alert.alert('Permission Required', 'Camera permission is required to use this feature.');
-//     }
-//   };
-
-//   const stopCamera = () => {
-//     setIsActive(false);
-//   };
-
-//   const captureImage = async () => {
-//     if (cameraRef.current) {
-//       try {
-//         const photo = await cameraRef.current.takePictureAsync({
-//           quality: 1,
-//           base64: true,
-//           exif: false
-//         });
-//         setCapturedImage(photo.uri);
-//         setIsActive(false);
-
-//         // Mock identification
-//         let guess;
-//         if (VISION_API_KEY !== 'AIzaSyBDfzP2i_XAj6lwc0Nn2BPxSSstyvBqfGw') {
-//           guess = await identifyWithVisionAPI(photo.uri);
-//         } else {
-//           guess = mockIdentify();
-//         }
-        
-//       } catch (error) {
-//         Alert.alert('Error', 'Failed to capture image');
-//       }
-//     }
-//   };
-
-//   function toggleCameraFacing() {
-//     setFacing(current => (current === 'back' ? 'front' : 'back'));
-//   }
-
-//   if (!permission) {
-//     // Camera permissions are still loading.
-//     return <View />;
-//   }
-
-//   if (!permission.granted) {
-//     // Camera permissions are not granted yet.
-//     return (
-//       <View style={styles.container}>
-//         <Text style={styles.message}>We need your permission to show the camera</Text>
-//         <Button onPress={requestPermission} title="grant permission" />
-//       </View>
-//     );
-//   }
-
-//   return (
-//     <ScrollView>
-//       <View style={styles.container}>
-//         <View style={styles.header}>
-//           <Text style={styles.title}>Scan a Monument</Text>
-//           <Text style={styles.subtitle}>
-//             Capture an image to identify cultural monuments.
-//           </Text>
-//         </View>
-
-//         <View style={styles.scannerContainer}>
-//           <View style={styles.cameraPanel}>
-//             <View style={styles.panelHeader}>
-//               <View style={styles.tag}>
-//                 <Text style={styles.tagText}>Camera </Text>
-//               </View>
-//               <View style={styles.buttonGroup}>
-//                 {!isActive && <TouchableOpacity
-//                   style={[styles.btn, !isActive && styles.btnActive]}
-//                   onPress={startCamera}
-//                   disabled={isActive}
-//                 >
-//                   <Text style={styles.btnText}>Start</Text>
-//                 </TouchableOpacity>}
-
-//                 {isActive && <TouchableOpacity
-//                   style={[styles.btn, isActive && styles.btnActive]}
-//                   onPress={captureImage}
-//                   disabled={!isActive}
-//                 >
-//                   <Text style={styles.btnText}>Capture</Text>
-//                 </TouchableOpacity>}
-
-//                 {isActive && <TouchableOpacity
-//                   style={[styles.btn, isActive && styles.btnActive]}
-//                   onPress={stopCamera}
-//                   disabled={!isActive}
-//                 >
-//                   <Text style={styles.btnText}>Stop</Text>
-//                 </TouchableOpacity>}
-//               </View>
-//             </View>
-
-//             <View>
-//               {isActive ? (
-//                 <View style={styles.cameraContainer}>
-//                   <CameraView
-//                     ref={cameraRef}
-//                     style={styles.camera}
-//                     facing={facing}
-//                   />
-//                   <View style={styles.buttonContainer}>
-//                     <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-//                       <AntDesign name='retweet' size={36} color='white' />
-//                     </TouchableOpacity>
-//                     <TouchableOpacity style={styles.button} onPress={captureImage}>
-//                       <AntDesign name='camera' size={36} color='white' />
-//                     </TouchableOpacity>
-//                   </View>
-//                 </View>
-
-//               ) : (
-//                 <View style={[styles.cameraPlaceholder, styles.OffCameraContainer]}>
-//                   <Text style={styles.placeholderText}>Camera Off</Text>
-//                 </View>
-//               )}
-//             </View>
-//           </View>
-
-//           <View style={styles.resultPanel}>
-//             <Text style={styles.resultTitle}>Result</Text>
-
-//             <View style={styles.snapshotContainer}>
-//               {capturedImage ? (
-//                 <Image source={{ uri: capturedImage }} style={styles.snapshot} />
-//               ) : (
-//                 <View style={styles.snapshotPlaceholder}>
-//                   <Text style={styles.placeholderText}>No image captured</Text>
-//                 </View>
-//               )}
-//             </View>
-
-//             {result && (
-//               <View style={styles.resultContent}>
-//                 <View style={styles.tag}>
-//                   <Text style={styles.tagText}>Guess</Text>
-//                 </View>
-//                 <Text style={styles.resultName}>{result.name}</Text>
-//                 <Text style={styles.resultNote}>{result.note}</Text>
-//               </View>
-//             )}
-//           </View>
-//         </View>
-//       </View>
-//     </ScrollView>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#F5E6D3',
-//   },
-//   header: {
-//     padding: 20,
-//     paddingBottom: 10,
-//   },
-//   title: {
-//     fontSize: 24,
-//     fontWeight: '700',
-//     color: '#6B2D2D',
-//     marginBottom: 5,
-//   },
-//   subtitle: {
-//     fontSize: 16,
-//     color: '#514a44',
-//     lineHeight: 22,
-//   },
-//   message: {
-//     flex: 1,
-//     textAlign: 'center',
-//     textAlignVertical: 'center',
-//     fontSize: 16,
-//     color: '#514a44',
-//   },
-//   scannerContainer: {
-//     flex: 1,
-//     margin: 20,
-//     marginTop: 0,
-//     gap: 16,
-//   },
-//   cameraPanel: {
-//     backgroundColor: '#FFFFFF',
-//     borderWidth: 1,
-//     borderColor: '#D9C6A1',
-//     borderRadius: 18,
-//     padding: 16,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 8 },
-//     shadowOpacity: 0.05,
-//     shadowRadius: 22,
-//     elevation: 5,
-//   },
-//   panelHeader: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'center',
-//     marginBottom: 12,
-//   },
-//   tag: {
-//     backgroundColor: '#F5E6D3',
-//     borderWidth: 1,
-//     borderColor: '#D9C6A1',
-//     borderRadius: 999,
-//     paddingHorizontal: 10,
-//     paddingVertical: 6,
-//   },
-//   tagText: {
-//     fontSize: 12,
-//     color: '#2E2E2E',
-//   },
-//   buttonGroup: {
-//     flexDirection: 'row',
-//     gap: 8,
-//   },
-//   btn: {
-//     paddingHorizontal: 16,
-//     paddingVertical: 8,
-//     borderRadius: 14,
-//     borderWidth: 1,
-//     borderColor: '#D9C6A1',
-//     backgroundColor: '#FFFFFF',
-//   },
-//   btnActive: {
-//     backgroundColor: '#6B2D2D',
-//   },
-//   btnText: {
-//     fontSize: 14,
-//     fontWeight: '600',
-//     color: '#2E2E2E',
-//   },
-//   cameraContainer: {
-//     aspectRatio: 3 / 4,   // portrait ratio (width : height)
-//     borderRadius: 14,
-//     overflow: 'hidden',
-//     backgroundColor: '#111111',
-//     position: 'relative', // allow overlay
-//   },
-//   OffCameraContainer: {
-//     height: 250,
-//     borderRadius: 14,
-//     overflow: 'hidden',
-//     backgroundColor: '#111111',
-//   },
-//   camera: {
-//     flex: 1,
-//   },
-//   cameraPlaceholder: {
-//     flex: 1,
-//     backgroundColor: '#111111',
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-//   webCameraPlaceholder: {
-//     backgroundColor: '#6B2D2D',
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-//   webCameraText: {
-//     color: '#FFFFFF',
-//     fontSize: 18,
-//     marginBottom: 4,
-//   },
-//   webCameraSubtext: {
-//     color: '#C59D5F',
-//     fontSize: 14,
-//   },
-//   placeholderText: {
-//     color: '#FFFFFF',
-//     fontSize: 16,
-//   },
-//   placeholderSubtext: {
-//     color: '#CCCCCC',
-//     fontSize: 12,
-//     marginTop: 4,
-//   },
-//   resultPanel: {
-//     backgroundColor: '#FFFFFF',
-//     borderWidth: 1,
-//     borderColor: '#D9C6A1',
-//     borderRadius: 18,
-//     padding: 16,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 8 },
-//     shadowOpacity: 0.05,
-//     shadowRadius: 22,
-//     elevation: 5,
-//   },
-//   resultTitle: {
-//     fontSize: 18,
-//     fontWeight: '700',
-//     color: '#2E2E2E',
-//     marginBottom: 12,
-//   },
-//   snapshotContainer: {
-//     height: 200,
-//     borderRadius: 14,
-//     overflow: 'hidden',
-//     marginBottom: 12,
-//   },
-//   snapshot: {
-//     width: '100%',
-//     height: '100%',
-//     resizeMode: 'cover',
-//   },
-//   snapshotPlaceholder: {
-//     flex: 1,
-//     backgroundColor: '#111111',
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-//   resultContent: {
-//     gap: 4,
-//   },
-//   resultName: {
-//     fontSize: 16,
-//     fontWeight: '700',
-//     color: '#2E2E2E',
-//     marginTop: 4,
-//   },
-//   resultNote: {
-//     fontSize: 14,
-//     color: '#8A7C6E',
-//   },
-//   buttonContainer: {
-//     position: 'absolute',
-//     bottom: 20,
-//     left: 0,
-//     right: 0,
-//     flexDirection: 'row',
-//     justifyContent: 'space-around',
-//     alignItems: 'center',
-//   },
-
-//   button: {
-//     padding: 12,
-//     backgroundColor: 'rgba(0,0,0,0.5)',
-//     borderRadius: 50,
-//   },
-// });
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, Button, ScrollView } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { AntDesign } from '@expo/vector-icons';
+ import * as fileSystem from 'expo-file-system';
 
 type Place = {
   id: number;
@@ -604,8 +112,6 @@ const places: Place[] = [
   }
 ];
 
-// Replace with your actual API key
-const VISION_API_KEY = 'AIzaSyBDfzP2i_XAj6lwc0Nn2BPxSSstyvBqfGw';
 
 export default function CameraTab() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -616,19 +122,13 @@ export default function CameraTab() {
   const [debugInfo, setDebugInfo] = useState<string>('');
   const cameraRef = useRef<CameraView | null>(null);
   const [facing, setFacing] = useState<CameraType>('back');
+ 
 
   // Debug logging function
-  const logDebug = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logMessage = `[${timestamp}] ${message}`;
-    console.log(logMessage);
-    setDebugInfo(prev => prev + '\n' + logMessage);
-  };
 
   // Enhanced mock identification with detailed information
   const mockIdentify = (): Result => {
     const randomPlace = places[Math.floor(Math.random() * places.length)];
-    logDebug(`🎭 Using mock data for: ${randomPlace.name}`);
     
     return {
       name: randomPlace.name,
@@ -643,211 +143,129 @@ export default function CameraTab() {
       }
     };
   };
+const identifyWithAPI = async (imageUri: string): Promise<Result> => {
+  try {
+    setIsProcessing(true);
+    setResult({
+      name: "Scanning...",
+      note: "Please wait while we analyze the image.",
+      confidence: 0
+    });
 
-  // Fixed Vision API implementation
-  const identifyWithVisionAPI = async (imageUri: string): Promise<Result> => {
-    try {
-      setIsProcessing(true);
-      logDebug('🔄 Starting Vision API analysis...');
-      
-      // Convert image to base64
-      logDebug('📷 Converting image to base64...');
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-      
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          resolve(base64String.split(',')[1]);
-        };
-        reader.readAsDataURL(blob);
-      });
+    const base64String = await fileSystem.readAsStringAsync(imageUri, {
+      encoding: fileSystem.EncodingType.Base64,
+    });
 
-      logDebug('🌐 Calling Vision API...');
+    const imageFormat = imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+    const dataUrl = `data:image/${imageFormat};base64,${base64String}`;
+
+    const apiResponse = await fetch('http://172.20.10.2:5000/detect-landmark-base64', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageBase64: dataUrl
+      }),
+    });
+
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      throw new Error(`API Error: ${apiResponse.status} - ${errorText}`);
+    }
+
+    const apiData = await apiResponse.json();
+
+    if (apiData.success && apiData.landmark) {
+      const { name, confidence } = apiData.landmark;
       
-      // Call Google Cloud Vision API
-      const visionResponse = await fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            requests: [
-              {
-                image: {
-                  content: base64,
-                },
-                features: [
-                  {
-                    type: 'LANDMARK_DETECTION',
-                    maxResults: 5,
-                  },
-                  {
-                    type: 'WEB_DETECTION',
-                    maxResults: 10,
-                  },
-                  {
-                    type: 'LABEL_DETECTION',
-                    maxResults: 10,
-                  }
-                ],
-              },
-            ],
-          }),
-        }
+      const matchedPlace = places.find(place => 
+        place.name.toLowerCase().includes(name.toLowerCase()) ||
+        name.toLowerCase().includes(place.name.toLowerCase())
       );
 
-      logDebug(`📡 API Response: ${visionResponse.status}`);
-      
-      if (!visionResponse.ok) {
-        const errorText = await visionResponse.text();
-        logDebug(`❌ API Error: ${errorText}`);
-        throw new Error(`API Error: ${visionResponse.status}`);
-      }
-
-      const visionData = await visionResponse.json();
-      logDebug(`📋 API Data: ${JSON.stringify(visionData, null, 2)}`);
-
-      if (visionData.responses && visionData.responses[0]) {
-        const apiResponse = visionData.responses[0];
-        
-        // Check for landmark detection first
-        if (apiResponse.landmarkAnnotations && apiResponse.landmarkAnnotations.length > 0) {
-          const landmark = apiResponse.landmarkAnnotations[0];
-          logDebug(`🏛️ Landmark found: ${landmark.description}`);
-          
-          // Try to match with our detailed data
-          const matchedPlace = places.find(place => 
-            place.name.toLowerCase().includes(landmark.description.toLowerCase()) ||
-            landmark.description.toLowerCase().includes(place.name.toLowerCase())
-          );
-
-          if (matchedPlace) {
-            return {
-              name: matchedPlace.name,
-              note: `${matchedPlace.description} (Vision API Detection)`,
-              confidence: landmark.score,
-              details: {
-                built: matchedPlace.built,
-                significance: matchedPlace.significance,
-                architecture: matchedPlace.architecture,
-                visitTime: matchedPlace.visitTime,
-                facts: matchedPlace.facts
-              }
-            };
-          } else {
-            return {
-              name: landmark.description,
-              note: `Landmark detected with ${Math.round(landmark.score * 100)}% confidence`,
-              confidence: landmark.score
-            };
+      if (matchedPlace) {
+        return {
+          name: matchedPlace.name,
+          note: `${matchedPlace.description} (${confidence}% confidence)`,
+          confidence: confidence / 100,
+          details: {
+            built: matchedPlace.built,
+            significance: matchedPlace.significance,
+            architecture: matchedPlace.architecture,
+            visitTime: matchedPlace.visitTime,
+            facts: matchedPlace.facts
           }
-        }
-        
-        // Check web detection
-        if (apiResponse.webDetection && apiResponse.webDetection.webEntities) {
-          const webEntities = apiResponse.webDetection.webEntities;
-          const relevantEntity = webEntities.find((entity: any) =>
-            entity.description && entity.score > 0.3
-          );
-          
-          if (relevantEntity) {
-            logDebug(`🌐 Web entity found: ${relevantEntity.description}`);
-            return {
-              name: relevantEntity.description,
-              note: `Found similar content online with ${Math.round(relevantEntity.score * 100)}% confidence`,
-              confidence: relevantEntity.score
-            };
-          }
-        }
-
-        // Check labels as fallback
-        if (apiResponse.labelAnnotations && apiResponse.labelAnnotations.length > 0) {
-          const topLabels = apiResponse.labelAnnotations.slice(0, 3).map((label: any) => label.description).join(', ');
-          logDebug(`🏷️ Labels detected: ${topLabels}`);
-          return {
-            name: "Unidentified Location",
-            note: `Detected features: ${topLabels}`,
-            confidence: 0.3
-          };
-        }
+        };
+      } else {
+        return {
+          name: name,
+          note: `Landmark detected with ${confidence}% confidence`,
+          confidence: confidence / 100
+        };
       }
-      
-      logDebug('❓ No useful results from API');
+    } else {
       return {
-        name: "Unknown Location",
-        note: "Could not identify this location",
+        name: "No Data Found",
+        note: apiData.message || "Could not identify this landmark",
         confidence: 0
       };
-      
-    } catch (error: any) {
-      logDebug(`❌ Vision API Error: ${error.message}`);
-      console.error('Vision API Error:', error);
-      Alert.alert('API Error', `Failed to analyze image: ${error.message}\n\nUsing mock data instead.`);
-      return mockIdentify();
-    } finally {
-      setIsProcessing(false);
     }
-  };
+    
+  } catch (error: any) {
+    return {
+      name: "No Data Found",
+      note: `API connection failed: ${error.message}`,
+      confidence: 0
+    };
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
-  const startCamera = async () => {
-    if (permission?.granted) {
-      logDebug('📷 Starting camera...');
+
+// Also fix the captureImage function for better quality:
+const captureImage = async () => {
+  if (cameraRef.current) {
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 1,        
+        base64: false,
+      });
+      
+      setCapturedImage(photo.uri);
+      setIsActive(false);
+
+      const guess = await identifyWithAPI(photo.uri);
+      setResult(guess);
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to capture image');
+    }
+  }
+};
+
+const startCamera = async () => {
+  if (permission?.granted) {
+    setIsActive(true);
+    setCapturedImage(null);
+    setResult(null);
+  } else {
+    const result = await requestPermission();
+    if (result.granted) {
       setIsActive(true);
       setCapturedImage(null);
       setResult(null);
     } else {
-      logDebug('⚠️ Requesting camera permission...');
-      const result = await requestPermission();
-      if (result.granted) {
-        setIsActive(true);
-        setCapturedImage(null);
-        setResult(null);
-      } else {
-        Alert.alert('Permission Required', 'Camera permission is required to use this feature.');
-      }
+      Alert.alert('Permission Required', 'Camera permission is required to use this feature.');
     }
-  };
+  }
+};
 
-  const stopCamera = () => {
-    logDebug('⏹️ Stopping camera...');
-    setIsActive(false);
-  };
+const stopCamera = () => {
+  setIsActive(false);
+};
 
-  const captureImage = async () => {
-    if (cameraRef.current) {
-      try {
-        logDebug('📸 Capturing image...');
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: false,
-        });
-        
-        logDebug(`✅ Image captured: ${photo.uri}`);
-        setCapturedImage(photo.uri);
-        setIsActive(false);
 
-        // FIXED: Now we actually use the result!
-        let guess: Result;
-        if (VISION_API_KEY && VISION_API_KEY !== 'AIzaSyBDfzP2i_XAj6lwc0Nn2BPxSSstyvBqfGw') {
-          logDebug('🤖 Using Vision API...');
-          guess = await identifyWithVisionAPI(photo.uri);
-        } else {
-          logDebug('🎭 Using mock data...');
-          guess = mockIdentify();
-        }
-        
-        setResult(guess);
-        logDebug(`🎯 Analysis complete: ${guess?.name}`);
-      } catch (error: any) {
-        logDebug(`❌ Capture error: ${error.message}`);
-        Alert.alert('Error', 'Failed to capture image');
-      }
-    }
-  };
 
   function toggleCameraFacing() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
@@ -876,18 +294,6 @@ export default function CameraTab() {
           </Text>
         </View>
 
-        {/* Debug Section */}
-        {debugInfo && (
-          <View style={styles.debugContainer}>
-            <Text style={styles.debugTitle}>Debug Info:</Text>
-            <ScrollView style={styles.debugScroll} nestedScrollEnabled>
-              <Text style={styles.debugText}>{debugInfo}</Text>
-            </ScrollView>
-            <TouchableOpacity onPress={() => setDebugInfo('')} style={styles.clearButton}>
-              <Text style={styles.clearButtonText}>Clear</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         <View style={styles.scannerContainer}>
           <View style={styles.cameraPanel}>
@@ -1283,3 +689,170 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// const identifyWithAPI = async (imageUri: string): Promise<Result> => {
+//   try {
+//     setIsProcessing(true);
+//     logDebug('🔄 Starting API analysis...');
+    
+//     // Use Expo FileSystem to read the image as base64 directly
+//     logDebug('📷 Converting image to base64...');
+    
+//     const base64String = await fileSystem.readAsStringAsync(imageUri, {
+//       encoding: fileSystem.EncodingType.Base64,
+//     });
+    
+//     // Determine the image format from the file extension or default to jpeg
+//     const imageFormat = imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+//     const dataUrl = `data:image/${imageFormat};base64,${base64String}`;
+    
+//     logDebug(`🔍 Base64 starts with: ${dataUrl.substring(0, 50)}`);
+//     logDebug(`🔍 Has data URL prefix: ${dataUrl.startsWith('data:image/')}`);
+//     logDebug(`📏 Full Base64 length: ${dataUrl.length}`);
+//     logDebug(`📷 Image format detected: ${imageFormat}`);
+
+//     logDebug('🌐 Calling backend API...');
+    
+//     // Call your Node.js backend
+//     const apiResponse = await fetch('http://172.20.10.2:5000/detect-landmark-base64', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       body: JSON.stringify({
+//         imageBase64: dataUrl
+//       }),
+//     });
+
+//     logDebug(`📡 API Response: ${apiResponse.status}`);
+    
+//     if (!apiResponse.ok) {
+//       const errorText = await apiResponse.text();
+//       logDebug(`❌ API Error (${apiResponse.status}): ${errorText}`);
+//       throw new Error(`API Error: ${apiResponse.status} - ${errorText}`);
+//     }
+
+//     const apiData = await apiResponse.json();
+//     logDebug(`📋 API Data: ${JSON.stringify(apiData, null, 2)}`);
+
+//     if (apiData.success && apiData.landmark) {
+//       const { name, confidence } = apiData.landmark;
+//       logDebug(`🏛️ Landmark found: ${name}`);
+      
+//       // Try to match with your detailed data
+//       const matchedPlace = places.find(place => 
+//         place.name.toLowerCase().includes(name.toLowerCase()) ||
+//         name.toLowerCase().includes(place.name.toLowerCase())
+//       );
+
+//       if (matchedPlace) {
+//         return {
+//           name: matchedPlace.name,
+//           note: `${matchedPlace.description} (${confidence}% confidence)`,
+//           confidence: confidence / 100,
+//           details: {
+//             built: matchedPlace.built,
+//             significance: matchedPlace.significance,
+//             architecture: matchedPlace.architecture,
+//             visitTime: matchedPlace.visitTime,
+//             facts: matchedPlace.facts
+//           }
+//         };
+//       } else {
+//         return {
+//           name: name,
+//           note: `Landmark detected with ${confidence}% confidence`,
+//           confidence: confidence / 100
+//         };
+//       }
+//     } else {
+//       // No landmark found
+//       logDebug('❓ No landmark detected by API');
+//       return {
+//         name: "No Data Found",
+//         note: apiData.message || "Could not identify this landmark",
+//         confidence: 0
+//       };
+//     }
+    
+//   } catch (error: any) {
+//     logDebug(`❌ API Error: ${error.message}`);
+//     console.error('Backend API Error:', error);
+    
+//     return {
+//       name: "No Data Found",
+//       note: `API connection failed: ${error.message}`,
+//       confidence: 0
+//     };
+//   } finally {
+//     setIsProcessing(false);
+//   }
+// };
+
+// // Also fix the captureImage function for better quality:
+// const captureImage = async () => {
+//   if (cameraRef.current) {
+//     try {
+//       logDebug('📸 Capturing image...');
+//       const photo = await cameraRef.current.takePictureAsync({
+//         quality: 1,        // ✅ Better quality for landmark detection
+//         base64: false,
+//       });
+      
+//       logDebug(`✅ Image captured: ${photo.uri}`);
+//       setCapturedImage(photo.uri);
+//       setIsActive(false);
+
+//       logDebug('🤖 Using Backend API...');
+//       const guess = await identifyWithAPI(photo.uri);
+      
+//       setResult(guess);
+//       logDebug(`🎯 Analysis complete: ${guess?.name}`);
+//     } catch (error: any) {
+//       logDebug(`❌ Capture error: ${error.message}`);
+//       Alert.alert('Error', 'Failed to capture image');
+//     }
+//   }
+// };
+
+//   const startCamera = async () => {
+//     if (permission?.granted) {
+//       logDebug('📷 Starting camera...');
+//       setIsActive(true);
+//       setCapturedImage(null);
+//       setResult(null);
+//     } else {
+//       logDebug('⚠️ Requesting camera permission...');
+//       const result = await requestPermission();
+//       if (result.granted) {
+//         setIsActive(true);
+//         setCapturedImage(null);
+//         setResult(null);
+//       } else {
+//         Alert.alert('Permission Required', 'Camera permission is required to use this feature.');
+//       }
+//     }
+//   };
+
+//   const stopCamera = () => {
+//     logDebug('⏹️ Stopping camera...');
+//     setIsActive(false);
+//   };
