@@ -170,3 +170,14 @@ export const SUNSET_COLORS = {
 
 // Export default theme
 export default HERITAGE_COLORS;
+
+
+export const homeColors = {
+  primary: '#D97706',
+  secondary: '#059669',
+  accent: '#7C3AED',
+  surface: '#FDF5E6',
+  background: '#FFFBF0',
+  textPrimary: '#2F1B14',
+  textSecondary: '#8B4513'
+};
