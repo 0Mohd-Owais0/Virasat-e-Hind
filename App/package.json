@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "web-build": "expo build:web",
-     "vercel-build": "expo export --no-dev --output-dir=web-build"
+  "vercel-build": "expo export --output-dir=web-build"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
