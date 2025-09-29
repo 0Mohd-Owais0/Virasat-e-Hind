@@ -11,6 +11,8 @@ import {
   useWindowDimensions,
   StatusBar,
 } from 'react-native';
+import { MainColors } from '@/constants/Colors';
+
 
 // 🎨 Theme palettes
 const THEME_COLORS = {

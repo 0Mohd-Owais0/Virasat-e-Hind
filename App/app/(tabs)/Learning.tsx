@@ -408,6 +408,7 @@ import { Router } from "expo-router";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { WebView } from "react-native-webview";
 import Svg, { Circle, Ellipse, Path, Rect } from "react-native-svg";
+import { MainColors } from "@/constants/Colors";
 
 // Import your HTML content
 import { coursesHTML } from "../Courses";
@@ -416,18 +417,7 @@ import { festivalsHTML } from "../festival";
 import { ArtHTML } from "../Art";
 
 // Color scheme from the CSS
-const colors = {
-  primary: '#B8860B',
-  primary50: '#FEF9E7',
-  primary600: '#9A7209',
-  secondary: '#8B4513',
-  surface: '#F5F5DC',
-  background: '#FDF5E6',
-  textPrimary: '#2F1B14',
-  textSecondary: '#5D4E37',
-  white: '#FFFFFF',
-};
-
+const colors = MainColors
 const { width } = Dimensions.get('window');
 
 export default function MyHeritageApp() {
@@ -490,7 +480,7 @@ export default function MyHeritageApp() {
         </View>
       </TouchableOpacity>
 
-      {showMobileMenu && (
+      {/* {showMobileMenu && (
         <View style={styles.mobileMenu}>
           {navItems.map((item) => (
             <TouchableOpacity
@@ -510,7 +500,7 @@ export default function MyHeritageApp() {
             </TouchableOpacity>
           ))}
         </View>
-      )}
+      )} */}
     </View>
   );
 

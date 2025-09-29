@@ -181,3 +181,18 @@ export const homeColors = {
   textPrimary: '#2F1B14',
   textSecondary: '#8B4513'
 };
+
+
+
+
+export const MainColors = {
+  primary: '#B8860B',
+  primary50: '#FEF9E7',
+  primary600: '#9A7209',
+  secondary: '#8B4513',
+  surface: '#F5F5DC',
+  background: '#FDF5E6',
+  textPrimary: '#2F1B14',
+  textSecondary: '#5D4E37',
+  white: '#FFFFFF',
+};
